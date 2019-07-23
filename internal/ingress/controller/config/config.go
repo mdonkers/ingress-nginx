@@ -525,6 +525,17 @@ type Configuration struct {
 	// Default: nginx.handle
 	DatadogOperationNameOverride string `json:"datadog-operation-name-override"`
 
+	// InstanaAgentHost specifies the Instana agent host to use when uploading traces
+	InstanaAgentHost string `json:"instana-agent-host"`
+
+	// InstanaAgentPort specifies the port to use when uploading traces
+	// Default: 42699
+	InstanaAgentPort int `json:"instana-agent-port"`
+
+	// InstanaServiceName specifies the service name to use for any traces created
+	// Default: nginx
+	InstanaServiceName string `json:"instana-service-name"`
+
 	// MainSnippet adds custom configuration to the main section of the nginx configuration
 	MainSnippet string `json:"main-snippet"`
 
@@ -734,6 +745,8 @@ func NewDefault() Configuration {
 		DatadogServiceName:           "nginx",
 		DatadogCollectorPort:         8126,
 		DatadogOperationNameOverride: "nginx.handle",
+		InstanaServiceName:           "nginx",
+		InstanaAgentPort:             42699,
 		LimitReqStatusCode:           503,
 		LimitConnStatusCode:          503,
 		SyslogPort:                   514,

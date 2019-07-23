@@ -19,13 +19,15 @@ We must also set the host to use when uploading traces:
 zipkin-collector-host: zipkin.default.svc.cluster.local
 jaeger-collector-host: jaeger-agent.default.svc.cluster.local
 datadog-collector-host: datadog-agent.default.svc.cluster.local
+instana-agent-host: instana-agent.default.svc.cluster.local
 ```
-NOTE: While the option is called `jaeger-collector-host`, you will need to point this to a `jaeger-agent`, and not the `jaeger-collector` component.  
+NOTE: While the option is called `jaeger-collector-host`, you will need to point this to a `jaeger-agent`, and not the `jaeger-collector` component.
 
 Next you will need to deploy a distributed tracing system which uses OpenTracing.
 [Zipkin](https://github.com/openzipkin/zipkin) and
 [Jaeger](https://github.com/jaegertracing/jaeger) and
-[Datadog](https://github.com/DataDog/dd-opentracing-cpp)
+[Datadog](https://github.com/DataDog/dd-opentracing-cpp) and
+[Instana](https://github.com/instana/cpp-sensor)
 have been tested.
 
 Other optional configuration options:
@@ -67,6 +69,12 @@ datadog-service-name
 
 # specifies the operation name to use for any traces collected, Default: nginx.handle
 datadog-operation-name-override
+
+# specifies the port to use when uploading traces, Default 42699
+instana-agent-port
+
+# specifies the service name to use for any traces created, Default: nginx
+instana-service-name
 ```
 
 All these options (including host) allow environment variables, such as `$HOSTNAME` or `$HOST_IP`. In the case of Jaeger, if you have a Jaeger agent running on each machine in your cluster, you can use something like `$HOST_IP` (which can be 'mounted' with the `status.hostIP` fieldpath, as described [here](https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#capabilities-of-the-downward-api)) to make sure traces will be sent to the local agent.

@@ -1059,6 +1059,12 @@ const datadogTmpl = `{
   "operation_name_override": "{{ .DatadogOperationNameOverride }}"
 }`
 
+const instanaTmpl = `{
+  "service": "{{ .InstanaServiceName }}",
+  "agent_host": "{{ .InstanaAgentHost }}",
+  "agent_port": {{ .InstanaAgentPort }}
+}`
+
 func createOpentracingCfg(cfg ngx_config.Configuration) error {
 	var tmpl *template.Template
 	var err error
@@ -1075,6 +1081,11 @@ func createOpentracingCfg(cfg ngx_config.Configuration) error {
 		}
 	} else if cfg.DatadogCollectorHost != "" {
 		tmpl, err = template.New("datadog").Parse(datadogTmpl)
+		if err != nil {
+			return err
+		}
+	} else if cfg.InstanaAgentHost != "" {
+		tmpl, err = template.New("instana").Parse(instanaTmpl)
 		if err != nil {
 			return err
 		}

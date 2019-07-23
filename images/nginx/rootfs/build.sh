@@ -30,6 +30,8 @@ export ZIPKIN_CPP_VERSION=0.5.2
 export JAEGER_VERSION=cdfaf5bb25ff5f8ec179fd548e6c7c2ade9a6a09
 export MSGPACK_VERSION=3.1.1
 export DATADOG_CPP_VERSION=0.4.3
+export LIBEVENT_VERSION=2.1.8
+export INSTANA_CPP_VERSION=0.5.4
 export MODSECURITY_VERSION=d7101e13685efd7e7c9f808871b202656a969f4b
 export MODSECURITY_LIB_VERSION=3.0.3
 export OWASP_MODSECURITY_CRS_VERSION=3.1.0
@@ -154,6 +156,9 @@ get_src bda49f996a73d2c6080ff0523e7b535917cd28c8a79c3a5da54fc29332d61d1e \
 
 get_src 7ef075c5936cfcca37d32c3b83b3b05d86f8a919d61fc94634f97a5c6542cff4 \
         "https://github.com/DataDog/dd-opentracing-cpp/archive/v$DATADOG_CPP_VERSION.tar.gz"
+
+get_src 37678a8951a677fd6a0cb3926f8450b1506a89179cdf48455f5af1512216f71c \
+        "https://github.com/instana/cpp-sensor/archive/$INSTANA_CPP_VERSION.tar.gz"
 
 get_src f5470132d8756eef293833e30508926894883924a445e3b9a07c869d26d4706d \
         "https://github.com/opentracing/lua-bridge-tracer/archive/$LUA_BRIDGE_TRACER_VERSION.tar.gz"
@@ -307,6 +312,82 @@ cmake ..
 
 make
 make install
+
+cd "$BUILD_PATH"
+# Compile for a portable cpu architecture
+export CFLAGS="-march=x86-64 -fPIC"
+export CXXFLAGS="-march=x86-64 -fPIC"
+export LDFLAGS="-fPIC"
+
+# Build LibEvent
+git clone -b release-${LIBEVENT_VERSION}-stable https://github.com/libevent/libevent.git
+cd libevent
+./autogen.sh
+./configure \
+    --enable-shared=no \
+    --enable-static=yes \
+    --disable-openssl \
+    --with-pic=yes
+make VERBOSE=1 && make install
+
+# build Instana lib
+cd "$BUILD_PATH/cpp-sensor-$INSTANA_CPP_VERSION"
+
+# Build Instana
+INSTANA_BUILD_PATH="$BUILD_PATH/cpp-sensor-$INSTANA_CPP_VERSION/.build/instana-sensor"
+mkdir -p $INSTANA_BUILD_PATH && cd $INSTANA_BUILD_PATH
+
+cat <<EOF > export.map
+{
+  global:
+    OpenTracingMakeTracerFactory;
+  local: *;
+};
+EOF
+
+# Force the linker to use older versions of certain symbols so that we can be compatible with
+# older versions of glibc.
+#
+# This follows the process outlined in https://stackoverflow.com/a/20065096/4447365
+cat <<EOF > symversions.c
+#include <time.h>
+#include <string.h>
+__asm__(".symver memcpy,memcpy@GLIBC_2.2.5");
+__asm__(".symver clock_gettime,clock_gettime@GLIBC_2.2.5");
+void *__wrap_memcpy(void* dest, const void* src, size_t n) {
+  return memcpy(dest, src, n);
+}
+int __wrap_clock_gettime(clockid_t clk_id, struct timespec* tp) {
+  return clock_gettime(clk_id, tp);
+}
+EOF
+gcc -c $CFLAGS symversions.c
+WRAPPED_SYMBOLS="\
+  -Wl,--wrap=memcpy \
+  -Wl,--wrap=clock_gettime \
+"
+LINKER_FLAGS="\
+$INSTANA_BUILD_PATH/symversions.o \
+-pthread \
+-lrt \
+-static-libstdc++ -static-libgcc \
+$WRAPPED_SYMBOLS \
+-Wl,--version-script=${INSTANA_BUILD_PATH}/export.map \
+"
+cmake -DCMAKE_BUILD_TYPE=Release \
+      -DBUILD_STATIC_LIBS=OFF \
+      -DCMAKE_EXE_LINKER_FLAGS="$LINKER_FLAGS" \
+      -DCMAKE_SHARED_LINKER_FLAGS="$LINKER_FLAGS" \
+      ../..
+make VERBOSE=1
+make test
+make install
+
+# Unset used variables to not conflict with other builds
+unset CFLAGS
+unset CXXFLAGS
+unset LDFLAGS
+
 
 # Get Brotli source and deps
 cd "$BUILD_PATH"

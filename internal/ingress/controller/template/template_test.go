@@ -1177,6 +1177,16 @@ func TestBuildOpenTracing(t *testing.T) {
 		t.Errorf("Expected '%v' but returned '%v'", expected, actual)
 	}
 
+	cfgInstana := config.Configuration{
+		EnableOpentracing:    true,
+		InstanaAgentHost: "instana-agent-host.com",
+	}
+	expected = "opentracing_load_tracer /usr/local/lib/libinstana_sensor.so /etc/nginx/opentracing.json;\r\n"
+	actual = buildOpentracing(cfgInstana)
+
+	if expected != actual {
+		t.Errorf("Expected '%v' but returned '%v'", expected, actual)
+	}
 }
 
 func TestEnforceRegexModifier(t *testing.T) {
